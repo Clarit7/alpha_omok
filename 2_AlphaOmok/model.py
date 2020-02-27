@@ -1,7 +1,9 @@
 import numpy as np
 import torch
 from torch import nn
-
+"""
+신경망 모델
+"""
 
 def conv3x3(in_planes, out_planes):
     return nn.Conv2d(in_planes, out_planes,
@@ -31,6 +33,7 @@ class ResBlock(nn.Module):
         return out
 
 
+# Policy (모든 착수위치에서 승리 가능성이 높을수록 높은 값)
 class PolicyHead(nn.Module):
     def __init__(self, planes, board_size):
         super(PolicyHead, self).__init__()
@@ -51,6 +54,7 @@ class PolicyHead(nn.Module):
         return out
 
 
+# Value (-1 ~ 1) 마지막 턴의 플레이어가 승리 가능성이 높을수록 낮은 값
 class ValueHead(nn.Module):
     def __init__(self, planes, board_size):
         super(ValueHead, self).__init__()

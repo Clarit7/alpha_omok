@@ -4,6 +4,9 @@ import numpy as np
 
 ALPHABET = ' A B C D E F G H I J K L M N O P Q R S'
 
+"""
+게임 구현에 필요한 함수들
+"""
 
 def valid_actions(board):
     actions = []
@@ -19,6 +22,7 @@ def valid_actions(board):
     return actions
 
 
+# node_id에 포함된 위치가 제외된 모든 가능한 착수위치를 반환함
 def legal_actions(node_id, board_size):
     all_action = {a for a in range(board_size**2)}
     action = set(node_id[1:])
@@ -27,6 +31,7 @@ def legal_actions(node_id, board_size):
     return list(actions)
 
 
+# env.step()으로부터 호출
 def check_win(board, win_mark):
     board = board.copy()
     num_mark = np.count_nonzero(board)
@@ -172,7 +177,8 @@ def get_state_pt(node_id, board_size, channel_size):
 
     return state
 
-
+# node_id로부터 (board_size * board_size)의 보드를 생성
+# agents.ZeroAgent().selection()으로부터 호출됨
 def get_board(node_id, board_size):
     board = np.zeros(board_size**2)
     for i, action_index in enumerate(node_id[1:]):
@@ -200,6 +206,7 @@ def get_action(pi):
     return action, action_index
 
 
+# 시뮬레이션 중 방문횟수가 가장 많았던 착수지점 중 랜덤하게 하나를 선택해 onehot인코딩한다
 def argmax_onehot(pi):
     action_size = len(pi)
     action = np.zeros(action_size)

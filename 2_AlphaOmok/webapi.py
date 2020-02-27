@@ -6,6 +6,10 @@ import utils
 
 # env_small: 9x9, env_regular: 15x15
 from env import env_small as game
+
+"""
+웹 서버
+"""
 BOARD_SIZE = game.Return_BoardParams()[0]
 
 web_api = Blueprint('web_api', __name__)

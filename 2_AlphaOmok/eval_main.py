@@ -54,6 +54,10 @@ player_model_path = 'human'
 enemy_model_path = './data/180927_9400_297233_step_model.pickle'
 monitor_model_path = './data/180927_9400_297233_step_model.pickle'
 
+"""
+플레이어 vs AI
+"""
+
 # 플레이어 모델 설정과 동작관련 명령을 처리
 class Evaluator(object):
     # 초기화
@@ -165,21 +169,24 @@ class Evaluator(object):
         self.monitor.model.load_state_dict(state_b)
 
     # 착수위치(boardsize**2 크기의 array)와 착수위치의 index 반환
+    # pi : 시뮬레이션 중 특정 위치의 방문 빈도 (visit / visit.sum)
     def get_action(self, root_id, board, turn, enemy_turn):
-        if turn != enemy_turn:
+        if turn != enemy_turn:  # 플레이어 턴일때
             if isinstance(self.player, agents.ZeroAgent):   # isinstance() : 내장함수, 첫번째 파라미터의 객체가 두번째 파라미터의 클래스에 해당하는지 확인한다
                 pi = self.player.get_pi(root_id, tau=0)
             else:
-                pi = self.player.get_pi(root_id, board, turn, tau=0)
+                pi = self.player.get_pi(root_id, board, turn, tau=0)    # 플레이어는 human이므로 이 부분이 실행됨
 
                 # for monitor
                 self.monitor.get_pi(root_id, tau=0)
-        else:
+        else:   # 적 턴일때
             if isinstance(self.enemy, agents.ZeroAgent):
-                pi = self.enemy.get_pi(root_id, tau=0)
+                pi = self.enemy.get_pi(root_id, tau=0)  # 적 플레이어는 이 부분이 실행됨
             else:
                 pi = self.enemy.get_pi(root_id, board, turn, tau=0)
 
+        # action : boardsize**2크기의 array에서 착수위치만 onehot 인코딩됨
+        # action_index : onehot인코딩된 위치
         action, action_index = utils.argmax_onehot(pi)
 
         return action, action_index
@@ -188,6 +195,8 @@ class Evaluator(object):
     def return_env(self):
         return self.env
 
+    # 리셋
+    # 게임 한판이 끝날 때 main()으로부터 호출
     def reset(self):
         self.player.reset()
         self.enemy.reset()
@@ -277,6 +286,7 @@ def main():
                                                         turn,
                                                         enemy_turn)
 
+            # root_id 에 현재 착수위치 추가
             if turn != enemy_turn:
                 # player turn
                 root_id = evaluator.player.root_id + (action_index,)
@@ -284,52 +294,59 @@ def main():
                 # enemy turn
                 root_id = evaluator.enemy.root_id + (action_index,)
 
+            # 게임판, 유효 착수위치인지, 게임 진행상황, 턴 정보를 받음
             board, check_valid_pos, win_index, turn, _ = env.step(action)
 
+            # 위의 정보들을 웹 서버에 전달
             game_info.game_board = board
             game_info.action_index = int(action_index)
             game_info.win_index = win_index
             game_info.curr_turn = turn  # 0 black 1 white
 
+            # 몇 번째 턴인지 셈
             move = np.count_nonzero(board)
 
             if turn == enemy_turn:
-
+                # enemy turn
+                # 플레이어가 human이나 Web이면 monitor에이전트의 visit과 policy를 웹 서버에 전달
                 if isinstance(evaluator.player, agents.HumanAgent) or \
                         isinstance(evaluator.player, agents.WebAgent):
                     player_agent_info.visit = evaluator.monitor.get_visit()
                     player_agent_info.p = evaluator.monitor.get_policy()
-                else:
+                else:   # 아니면 player에이전트의 visit과 policy를 웹 서버에 전달
                     player_agent_info.visit = evaluator.player.get_visit()
                     player_agent_info.p = evaluator.player.get_policy()
 
-                player_agent_info.add_value(move, v)
-                evaluator.enemy.del_parents(root_id)
+                player_agent_info.add_value(move, v)    # 웹 서버에 move와 v전달
+                evaluator.enemy.del_parents(root_id)    # 적 에이전트의 tree에서 root_id보다 짧은 트리를 모두 삭제
 
             else:
+                # player turn
+                # 웹 서버에 적 에이전트의 visit, policy, move, v 전달
                 enemy_agent_info.visit = evaluator.enemy.get_visit()
                 enemy_agent_info.p = evaluator.enemy.get_policy()
                 enemy_agent_info.add_value(move, v)
-                evaluator.player.del_parents(root_id)
+                evaluator.player.del_parents(root_id)   # human 에이전트에선 별다른 동작을 하지 않는다
 
-            if win_index != 0:
+            if win_index != 0:  # 승패가 결정됐다면
+                # 초기화
                 player_agent_info.clear_values()
                 enemy_agent_info.clear_values()
                 # 0:Running 1:Player Win, 2: Enemy Win 3: Draw
-                game_info.game_status = win_index
+                game_info.game_status = win_index   # 웹 서버에 승패 전달
 
-                if turn == enemy_turn:
-                    if win_index == 3:
+                if turn == enemy_turn:  # 적 턴이면
+                    if win_index == 3:  # 무승부
                         result['Draw'] += 1
                         print('\nDraw!')
                         player_elo, enemy_elo = elo(
-                            player_elo, enemy_elo, 0.5, 0.5)
-                    else:
+                            player_elo, enemy_elo, 0.5, 0.5)    # 레이팅 변동 없음
+                    else:   # 플레이어가 마지막 돌을 착수 후 턴이 바뀌고 게임이 끝나므로 플레이어 승
                         result['Player'] += 1
                         print('\nPlayer Win!')
                         player_elo, enemy_elo = elo(
                             player_elo, enemy_elo, 1, 0)
-                else:
+                else:   # 플레이어 턴이면 (위와 동일)
                     if win_index == 3:
                         result['Draw'] += 1
                         print('\nDraw!')
@@ -341,14 +358,16 @@ def main():
                         player_elo, enemy_elo = elo(
                             player_elo, enemy_elo, 0, 1)
 
-                utils.render_str(board, BOARD_SIZE, action_index)
-                # Change turn
+                utils.render_str(board, BOARD_SIZE, action_index)   # 게임판 렌더링
+                # 선후공 교체
                 enemy_turn = abs(enemy_turn - 1)
                 turn = 0
 
+                # 웹 서버에 선후공과 턴 정보 전달
                 game_info.enemy_turn = enemy_turn
                 game_info.curr_turn = turn
 
+                # 게임 결과 요약 출력
                 pw, ew, dr = result['Player'], result['Enemy'], result['Draw']
                 winrate = (pw + 0.5 * dr) / (pw + ew + dr) * 100
                 print('')
@@ -360,7 +379,7 @@ def main():
                           pw, ew, dr, winrate))
                 print('Player ELO: {:.0f}, Enemy ELO: {:.0f}'.format(
                     player_elo, enemy_elo))
-                evaluator.reset()
+                evaluator.reset()   # evaluator리셋
 
 
 # Web API

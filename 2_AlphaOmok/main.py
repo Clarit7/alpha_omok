@@ -10,13 +10,16 @@ import torch.optim as optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-import agents.local as agents
+import agents as agents
 import model
 import utils
 
 # env_small: 9x9, env_regular: 15x15
 from env import env_small as game
 
+"""
+셀프 플레이 관련
+"""
 
 logging.basicConfig(
     filename='logs/log_{}.txt'.format(datetime.now().strftime('%y%m%d')),
