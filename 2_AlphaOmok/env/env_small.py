@@ -57,6 +57,8 @@ def Return_BoardParams():
     return GAMEBOARD_SIZE, GAMEBOARD_SIZE**2
 
 
+# 게임 모드 설정
+# eval_main.Evaluator().set_agents()로부터 호출됨
 class GameState:
     def __init__(self, gamemode):
         global DISPLAYSURF, BASIC_FONT, TITLE_FONT, GAMEOVER_FONT

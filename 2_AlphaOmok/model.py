@@ -74,6 +74,8 @@ class ValueHead(nn.Module):
         return out
 
 
+# 신경망 모델 설정
+# eval_main.Evaluator().set_agents() 로부터 호출됨
 class PVNet(nn.Module):
     def __init__(self, n_block, inplanes, planes, board_size):
         super(PVNet, self).__init__()

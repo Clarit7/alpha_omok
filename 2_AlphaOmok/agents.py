@@ -16,8 +16,8 @@ device = torch.device('cuda' if use_cuda else 'cpu')
 class Agent(object):
     def __init__(self, board_size):
 
-        self.policy = np.zeros(board_size**2, 'float')
-        self.visit = np.zeros(board_size**2, 'float')
+        self.policy = np.zeros(board_size**2, 'float')  # 착수위치에 따른 승리확률
+        self.visit = np.zeros(board_size**2, 'float')   # 이미 방문한 위치 표시
         self.message = 'Hello'
 
     def get_policy(self):
@@ -38,16 +38,16 @@ class Agent(object):
 
 class ZeroAgent(Agent):
     def __init__(self, board_size, num_mcts, inplanes, noise=True):
-        super(ZeroAgent, self).__init__(board_size)
-        self.board_size = board_size
-        self.num_mcts = num_mcts
-        self.inplanes = inplanes
+        super(ZeroAgent, self).__init__(board_size)  # agent.Agent() 호출
+        self.board_size = board_size  # 보드사이즈 설정
+        self.num_mcts = num_mcts      # MCTS 반복 횟수 설정
+        self.inplanes = inplanes      # inplanes 설정
         # tictactoe and omok
-        self.win_mark = 3 if board_size == 3 else 5
-        self.alpha = 10 / self.board_size**2
+        self.win_mark = 3 if board_size == 3 else 5  # 틱택토와 오목에서의 승리 기준 설정
+        self.alpha = 10 / self.board_size**2  # 알파값과 보드사이즈를 제곱으로 설정
         self.c_puct = 5
         self.noise = noise
-        self.root_id = None
+        self.root_id = None # 루트 아이디 초기화
         self.model = None
         self.tree = {}
         self.is_real_root = True
@@ -249,14 +249,19 @@ class ZeroAgent(Agent):
         print('tree size:', len(self.tree))
         print('tree depth:', 0 if max_len <= 0 else max_len - 1)
 
+    # policy(각 착수위치의 승리 가능성)와 value반환
     def get_pv(self, root_id):
+        # state
+        # s[t = (0, 1, ... , inplanes - 2)] = (inplanes - 2 - t)턴 전에 착수한 플레이어의 모든 돌 위치가 one hot 인코딩된 array
+        # s[inplanes-1] = color feature (마지막 착수가 흑이었으면 all 0, 백이면 all 1)
         state = utils.get_state_pt(root_id, self.board_size, self.inplanes)
         self.model.eval()
         with torch.no_grad():
             state_input = torch.tensor([state]).to(device).float()
             policy, value = self.model(state_input)
-            p = policy.data.cpu().numpy()[0]
-            v = value.data.cpu().numpy()[0]
+            p = policy.data.cpu().numpy()[0]    # policy : 각 착수 위치의 승리 가능성
+            v = value.data.cpu().numpy()[0]     # value : (-1 ~ 1) 이번 턴의 플레이어의 승리 가능성이 높으면 높은 값을 반환
+            print(v)
         return p, v
 
 
@@ -657,6 +662,8 @@ class RandomAgent(Agent):
         return
 
 
+# 플레이어가 human일 때 에이전트 설정
+# eval_main.Evaluator().set_agents() 로부터 호출
 class HumanAgent(Agent):
     COLUMN = {"a": 0, "b": 1, "c": 2,
               "d": 3, "e": 4, "f": 5,

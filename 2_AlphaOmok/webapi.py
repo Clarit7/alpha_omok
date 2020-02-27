@@ -1,4 +1,4 @@
-import flask
+import flask    # 웹 어플리케이션 프레임워크
 from flask import Blueprint
 from info.agent_info import AgentInfo
 from info.game_info import GameInfo
